@@ -12,8 +12,8 @@ sheet_name = "Sheet1"  # specify the worksheet name
 # Read the sheet
 df = pd.read_excel(input_file, sheet_name=sheet_name, header=None)
 
-# Filter only rows where column A == "Charge"
-df_filtered = df[df[0] == "Charge"]
+# Filter only rows where column A == "Credit"
+df_filtered = df[df[0] == "Credit"]
 
 # Append values based on common ID in column B (index 1)
 grouped_data = {}

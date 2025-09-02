@@ -1,0 +1,6 @@
+{
+    "raw_folder": "C:\\path\\to\\raw\\data",
+    "output_folder": "C:\\path\\to\\processed\\data",
+    "input_file": "TestCon.xlsx",
+    "sheet_name": "Sheet1"
+}
