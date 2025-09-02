@@ -1,20 +1,18 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request
 import subprocess
 import sys
 import os
-import traceback
 import json
-from datetime import datetime
 
 app = Flask(__name__, static_folder='static')
 
-# Load configuration from file
 def load_config():
+    """Load configuration from JSON file"""
     try:
         with open('config.json', 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        # Default configuration if file doesn't exist
+        # Default configuration
         default_config = {
             'raw_folder': r"C:\path\to\raw\data",
             'output_folder': r"C:\path\to\processed\data",
@@ -25,6 +23,7 @@ def load_config():
         return default_config
 
 def save_config(config):
+    """Save configuration to JSON file"""
     with open('config.json', 'w') as f:
         json.dump(config, f, indent=4)
 
@@ -32,80 +31,54 @@ CONFIG = load_config()
 
 @app.route('/')
 def index():
-    """Main page with the Charge button"""
+    """Main page with Charge and Credit buttons"""
     return render_template('index.html')
+
+def execute_processing(filter_type):
+    """Execute the Excel processing script"""
+    try:
+        # Update the FileCon.py script with current config
+        update_script_config(filter_type)
+        
+        # Execute the script
+        result = subprocess.run([sys.executable, 'FileCon.py'], 
+                              capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            return {
+                'success': True,
+                'message': f'{filter_type} processing completed successfully! CSV saved to {CONFIG["output_folder"]}',
+                'output': result.stdout
+            }
+        else:
+            return {
+                'success': False,
+                'message': 'Error occurred during processing',
+                'error': result.stderr
+            }
+            
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'message': 'Processing timed out. Please try again.'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Unexpected error: {str(e)}'
+        }
 
 @app.route('/execute_charge', methods=['POST'])
 def execute_charge():
     """Execute the charge processing script"""
-    try:
-        # Update the FileCon.py script with current config
-        update_script_config('Charge')
-        
-        # Execute the script
-        result = subprocess.run([sys.executable, 'FileCon.py'], 
-                              capture_output=True, text=True, timeout=60)
-        
-        if result.returncode == 0:
-            return jsonify({
-                'success': True,
-                'message': f'Charge processing completed successfully! CSV saved to {CONFIG["output_folder"]}',
-                'output': result.stdout
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Error occurred during processing',
-                'error': result.stderr
-            })
-            
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            'success': False,
-            'message': 'Processing timed out. Please try again.'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Unexpected error: {str(e)}',
-            'error': traceback.format_exc()
-        })
+    result = execute_processing('Charge')
+    return jsonify(result)
 
 @app.route('/execute_credit', methods=['POST'])
 def execute_credit():
     """Execute the credit processing script"""
-    try:
-        # Update the FileCon.py script with current config
-        update_script_config('Credit')
-        
-        # Execute the script
-        result = subprocess.run([sys.executable, 'FileCon.py'], 
-                              capture_output=True, text=True, timeout=60)
-        
-        if result.returncode == 0:
-            return jsonify({
-                'success': True,
-                'message': f'Credit processing completed successfully! CSV saved to {CONFIG["output_folder"]}',
-                'output': result.stdout
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Error occurred during processing',
-                'error': result.stderr
-            })
-            
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            'success': False,
-            'message': 'Processing timed out. Please try again.'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Unexpected error: {str(e)}',
-            'error': traceback.format_exc()
-        })
+    result = execute_processing('Credit')
+    return jsonify(result)
 
 @app.route('/update_config', methods=['POST'])
 def update_config():
@@ -118,55 +91,76 @@ def update_config():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error updating config: {str(e)}'})
 
-def update_script_config(filter_type='Charge'):
+def update_script_config(filter_type):
     """Update the FileCon.py script with current configuration"""
     script_content = f'''import pandas as pd
 import os
 
-# Define folder paths
-raw_folder = r"{CONFIG['raw_folder']}"
-output_folder = r"{CONFIG['output_folder']}"
+def process_excel_data(filter_type, raw_folder, output_folder, input_file, sheet_name):
+    """
+    Process Excel data and generate CSV with trailing commas
+    
+    Args:
+        filter_type (str): "Charge" or "Credit" to filter by
+        raw_folder (str): Path to raw data folder
+        output_folder (str): Path to output folder
+        input_file (str): Excel file name
+        sheet_name (str): Sheet name in Excel file
+    """
+    # Construct full file path
+    excel_path = os.path.join(raw_folder, input_file)
+    
+    # Read Excel file
+    df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
+    
+    # Filter rows by type
+    df_filtered = df[df[0] == filter_type]
+    
+    if df_filtered.empty:
+        print(f"No {{filter_type}} records found in the Excel file")
+        return
+    
+    # Group data by ID (column B) and collect values from columns C and D
+    grouped_data = {{}}
+    for _, row in df_filtered.iterrows():
+        id_val = row[1]  # ID in column B
+        values = row[2:4].tolist()  # Values from columns C and D
+        
+        if id_val not in grouped_data:
+            grouped_data[id_val] = values
+        else:
+            grouped_data[id_val].extend(values)
+    
+    # Convert to DataFrame
+    result_df = pd.DataFrame.from_dict(grouped_data, orient="index")
+    result_df.reset_index(inplace=True)
+    result_df.rename(columns={{"index": "ID"}}, inplace=True)
+    
+    # Generate output file path
+    output_file = os.path.join(output_folder, "input.csv")
+    
+    # Ensure output directory exists
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # Write CSV with trailing commas in one step
+    with open(output_file, 'w', newline='') as f:
+        for _, row in result_df.iterrows():
+            # Convert row to string and add trailing comma
+            row_str = ','.join(str(val) for val in row.values) + ','
+            f.write(row_str + '\\n')
+    
+    print(f"Processed CSV saved at: {{output_file}}")
+    print(f"Total {{filter_type}} records processed: {{len(result_df)}}")
 
-# Define file and sheet
-input_file = os.path.join(raw_folder, "{CONFIG['input_file']}")
-sheet_name = "{CONFIG['sheet_name']}"  # specify the worksheet name
-
-# Read the sheet
-df = pd.read_excel(input_file, sheet_name=sheet_name, header=None)
-
-# Filter only rows where column A == "{filter_type}"
-df_filtered = df[df[0] == "{filter_type}"]
-
-# Append values based on common ID in column B (index 1)
-grouped_data = {{}}
-for _, row in df_filtered.iterrows():
-    id_val = row[1]  # assuming the ID is in column B
-    values = row[2:4].tolist()  # columns C and D (adjust if needed)
-
-    if id_val not in grouped_data:
-        grouped_data[id_val] = values
-    else:
-        grouped_data[id_val].extend(values)
-
-# Convert to DataFrame
-result_df = pd.DataFrame.from_dict(grouped_data, orient="index")
-result_df.reset_index(inplace=True)
-result_df.rename(columns={{"index": "ID"}}, inplace=True)
-
-# Convert to CSV with trailing comma at the end of each row
-output_file = os.path.join(output_folder, "input.csv")
-result_df.to_csv(output_file, index=False, header=False)
-
-# Add trailing comma manually
-with open(output_file, "r") as f:
-    lines = f.readlines()
-
-lines = [line.strip() + "," + "\\n" for line in lines]  # append a comma at the end
-
-with open(output_file, "w") as f:
-    f.writelines(lines)
-
-print(f"Processed CSV saved at: {{output_file}}")
+if __name__ == "__main__":
+    # Configuration from Flask app
+    raw_folder = r"{CONFIG['raw_folder']}"
+    output_folder = r"{CONFIG['output_folder']}"
+    input_file = "{CONFIG['input_file']}"
+    sheet_name = "{CONFIG['sheet_name']}"
+    filter_type = "{filter_type}"
+    
+    process_excel_data(filter_type, raw_folder, output_folder, input_file, sheet_name)
 '''
     
     with open('FileCon.py', 'w') as f:

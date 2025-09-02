@@ -1,24 +1,25 @@
-# Charge Processing Tool
+# Excel to CSV Processing Tool
 
-A web-based application for processing Excel data and generating CSV output. This tool features a Matrix-themed interface and can be embedded in SharePoint pages.
+A clean, efficient web-based application for processing Excel data and generating CSV output. This tool can be embedded in SharePoint pages and works across Windows and Mac platforms.
 
 ## Features
 
-- **Matrix-Themed UI**: Dark interface with your Matrix image as background
-- **Two Processing Options**: Charge and Credit buttons for different data types
+- **Clean, Professional UI**: Modern interface with customizable background
+- **Dual Processing Options**: Charge and Credit buttons for different data types
 - **Cross-Platform**: Works on Windows and Mac through web browsers
 - **SharePoint Compatible**: Can be embedded in SharePoint pages
-- **Simple Configuration**: Easy setup of input/output folders and files
+- **Efficient Processing**: Optimized code for faster execution
 - **Error Handling**: Comprehensive error messages and status updates
 
 ## What It Does
 
 The application processes Excel files by:
 1. Reading data from a specified Excel file and sheet
-2. Filtering rows where column A contains "Charge"
+2. Filtering rows where column A contains "Charge" or "Credit"
 3. Grouping data by ID (column B)
-4. Generating a CSV file with trailing commas
-5. Saving the output to a specified folder
+4. Extracting values from columns C and D
+5. Generating a CSV file with trailing commas
+6. Saving the output to a specified folder
 
 ## Setup Instructions
 
@@ -30,12 +31,18 @@ The application processes Excel files by:
 ### Installation
 
 1. **Clone or download** this project to your server
-2. **Install dependencies**:
+2. **Create virtual environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configure paths**:
+4. **Configure paths**:
    - Edit `config.json` or use the web interface
    - Update the following paths:
      - `raw_folder`: Path to your input Excel files
@@ -52,12 +59,12 @@ The application processes Excel files by:
 
 2. **Access the application**:
    - Open your web browser
-   - Navigate to `http://localhost:5000`
-   - You should see the Charge Processing Tool interface
+   - Navigate to `http://localhost:5001`
+   - You should see the Excel to CSV interface
 
 ## SharePoint Integration
 
-### Option 1: Direct Embedding
+### Direct Embedding
 1. Host the Flask application on a server accessible from your SharePoint environment
 2. In SharePoint, add a "Script Editor" web part
 3. Embed the application using an iframe:
@@ -65,27 +72,18 @@ The application processes Excel files by:
    <iframe src="http://your-server:5001" width="100%" height="600px" frameborder="0"></iframe>
    ```
 
-### Option 2: SharePoint App
-1. Package the application as a SharePoint app
-2. Deploy to your SharePoint environment
-3. Add the app to your SharePoint page
-
-### Option 3: Web Part Development
-1. Create a custom SharePoint web part
-2. Integrate the application's API endpoints
-3. Deploy the web part to SharePoint
-
 ## Configuration
 
 ### File Structure
 ```
 Project_ExpressIssue/
 ├── app.py              # Flask web application
-├── FileCon.py          # Original processing script
+├── FileCon.py          # Excel processing script
 ├── config.json         # Configuration settings
 ├── requirements.txt    # Python dependencies
 ├── templates/
-│   └── index.html      # Matrix-themed web interface
+│   └── index.html      # Web interface
+├── static/             # Static files (images, etc.)
 └── README.md           # This file
 ```
 
@@ -98,10 +96,9 @@ Project_ExpressIssue/
 
 ## Usage
 
-1. **Configure Settings**: Click "Show/Hide Configuration" to set up paths and file names
-2. **Click Charge**: Press the "Charge" button to execute the processing
-3. **Monitor Status**: Watch for success/error messages
-4. **Check Output**: Find the generated CSV file in your output folder
+1. **Click Charge or Credit**: Press either button to execute the processing
+2. **Monitor Status**: Watch for success/error messages
+3. **Check Output**: Find the generated CSV file in your output folder
 
 ## Error Handling
 
@@ -110,20 +107,32 @@ The application handles various error scenarios:
 - **Invalid file format**: If the Excel file is corrupted or in wrong format
 - **Permission errors**: If the application can't read/write to specified folders
 - **Processing timeouts**: If the script takes too long to execute
+- **Empty results**: If no matching records are found
 
-## Security Considerations
+## Code Optimization
 
-- **Network Security**: Ensure the server is properly secured
-- **File Permissions**: Configure appropriate read/write permissions
-- **Input Validation**: Validate file paths and names
-- **Error Logging**: Monitor application logs for security issues
+### Recent Improvements
+
+- **Eliminated redundant code**: Removed duplicate processing logic
+- **Optimized CSV generation**: Single-step CSV writing with trailing commas
+- **Reduced dependencies**: Only essential packages included
+- **Improved error handling**: Better error messages and validation
+- **Cleaner code structure**: Modular functions with clear documentation
+
+### Performance Benefits
+
+- **Faster execution**: Optimized data processing algorithms
+- **Reduced memory usage**: Efficient data structures
+- **Smaller package size**: Minimal dependencies
+- **Better maintainability**: Clean, documented code
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **"Module not found" errors**:
-   - Ensure all dependencies are installed: `pip install -r requirements.txt`
+   - Ensure virtual environment is activated
+   - Install dependencies: `pip install -r requirements.txt`
 
 2. **Permission denied errors**:
    - Check file and folder permissions
@@ -133,10 +142,9 @@ The application handles various error scenarios:
    - Verify the `config.json` file is writable
    - Check for disk space issues
 
-4. **SharePoint embedding issues**:
-   - Ensure the server is accessible from SharePoint
-   - Check iframe security policies
-   - Verify CORS settings if needed
+4. **Port already in use**:
+   - Change port in `app.py` if needed
+   - Check for other running applications
 
 ### Logs and Debugging
 
